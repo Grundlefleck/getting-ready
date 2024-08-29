@@ -13,7 +13,7 @@ export const config: ChildTaskConfig[] = [
       { name: "Brush hair", duration: 2 },
       { name: "Shoes and coat on", duration: 2 },
     ],
-    colorClass: "bg-blue-200",
+    colorClass: "bg-red-600",
   },
   {
     name: "Calum",
@@ -27,7 +27,7 @@ export const config: ChildTaskConfig[] = [
       { name: "Brush hair", duration: 2 },
       { name: "Shoes and coat on", duration: 2 },
     ],
-    colorClass: "bg-yellow-400",
+    colorClass: "bg-blue-600",
   },
   {
     name: "Dylan",
@@ -41,6 +41,6 @@ export const config: ChildTaskConfig[] = [
       { name: "Brush hair", duration: 2 },
       { name: "Shoes and coat on", duration: 2 },
     ],
-    colorClass: "bg-red-300",
+    colorClass: "bg-purple-300",
   },
 ];

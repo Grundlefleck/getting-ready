@@ -11,7 +11,7 @@ import { config } from "./config";
 
 const StatusIcon = ({ completed }: { completed: boolean }) => (
   <i
-    className={`fas ${completed ? "fa-check text-green-600" : "fa-hourglass-half text-yellow-600"} absolute bottom-2 right-2 text-xl`}
+    className={`fas ${completed ? "fa-check text-green-600" : "fa-hourglass-half text-yellow-900"} absolute bottom-2 right-2 fa-2x`}
     style={{ opacity: 1 }}
   />
 );
@@ -65,14 +65,15 @@ const App: React.FC = () => {
     (endTime.getTime() - startTime.getTime()) / (1000 * 60),
   );
 
+  const timeConstrained = Math.min(
+    Math.max(currentTime.getTime(), startTime.getTime()),
+    endTime.getTime(),
+  );
   const timeElapsed = Math.ceil(
-    (currentTime.getTime() - startTime.getTime()) / (1000 * 60),
+    (timeConstrained - startTime.getTime()) / (1000 * 60),
   );
   const tasksWidthPercentage = 82;
-  const linePosition = Math.min(
-    100,
-    timeElapsed / totalMinutes + (100 - tasksWidthPercentage),
-  );
+  const linePosition = Math.min(100, (timeElapsed / totalMinutes) * 100 + (100 - tasksWidthPercentage) );
 
   const handleTaskClick = (
     taskConfig: ChildTaskConfig,
@@ -154,8 +155,8 @@ const App: React.FC = () => {
           );
         })}
         <div
-          className="absolute top-0 bottom-0 border-l-2 border-red-500"
-          style={{ left: `${linePosition}%`, width: "2px" }}
+          className="absolute top-0 bottom-0 border-l-8 border-orange-900"
+          style={{ left: `${linePosition}%`, opacity: 0.4, width: "2px" }}
         />
       </div>
 
