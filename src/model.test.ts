@@ -112,6 +112,25 @@ describe("task model", () => {
     expect(status[otherChild.name]["Eat breakfast"]).toBe(false);
   });
 
+  it("unchecks a previously completed task", () => {
+    const model = buildModel();
+
+    model.applyOperation({
+      type: "TaskClicked",
+      taskConfig: child,
+      completed: child.tasks[0],
+    });
+    model.applyOperation({
+      type: "TaskUnchecked",
+      taskConfig: child,
+      task: child.tasks[0],
+    });
+
+    expect(model.getState().taskCompletionStatus[child.name]["Eat breakfast"]).toBe(
+      false,
+    );
+  });
+
   it("produces a new state on every operation instead of mutating", () => {
     const model = buildModel();
     const before = model.getState();

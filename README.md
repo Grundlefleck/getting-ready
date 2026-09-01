@@ -7,4 +7,4 @@ and see if they are on schedule for getting ready.
  - [x] render the tasks in a swimlane per child
  - [x] allow marking off a task as complete
  - [ ] play a notification sound when a task is overdue
- - [ ] store current state for each day in localStorage to keep state across page refreshes
+ - [x] store current state for each day in localStorage to keep state across page refreshes

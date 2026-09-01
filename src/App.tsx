@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Activity,
   activitiesFor,
   ChildTaskConfig,
   elapsedFraction,
@@ -13,8 +12,14 @@ import {
   taskWindows,
 } from "./model";
 import { config } from "./config";
+import ActivityTags from "./ActivityTags";
 import LunchPanel from "./LunchPanel";
 import WeekMenuPopup from "./WeekMenuPopup";
+import { dateKey } from "./lunches";
+import {
+  loadTaskCompletionStatus,
+  saveTaskCompletionStatus,
+} from "./storage";
 
 const StatusIcon = ({
   completed,
@@ -35,23 +40,75 @@ const StatusIcon = ({
   />
 );
 
-const activityTags: Record<Activity, { label: string; classes: string }> = {
-  pe: { label: "🤸 PE", classes: "bg-orange-200 text-orange-900" },
-  outdoor: { label: "🌳 Outdoor", classes: "bg-green-200 text-green-900" },
-};
+const CONFETTI_COLORS = [
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#3b82f6",
+  "#a855f7",
+  "#ec4899",
+];
 
-const ActivityTags = ({ activities }: { activities: Activity[] }) => (
-  <>
-    {activities.map((activity) => (
-      <span
-        key={activity}
-        className={`mt-1 px-2 py-0.5 rounded-full text-xs font-bold shadow ${activityTags[activity].classes}`}
-      >
-        {activityTags[activity].label}
-      </span>
-    ))}
-  </>
-);
+const CELEBRATION_MILLIS = 4000;
+
+const CelebrationOverlay = ({ name }: { name: string }) => {
+  const [pieces] = useState(() =>
+    Array.from({ length: 120 }, (_, id) => {
+      const xMid = (Math.random() - 0.5) * 90;
+      return {
+        id,
+        delay: Math.random() * 0.4,
+        width: 8 + Math.random() * 6,
+        height: 10 + Math.random() * 8,
+        color: CONFETTI_COLORS[id % CONFETTI_COLORS.length],
+        xMid,
+        xEnd: xMid + (Math.random() - 0.5) * 20,
+        peak: -(40 + Math.random() * 45),
+        spinMid: 360 + Math.random() * 360,
+        spinEnd: 720 + Math.random() * 720,
+      };
+    }),
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 pointer-events-none overflow-hidden bg-black/30"
+      data-testid="celebration"
+    >
+      {pieces.map((piece) => (
+        <span
+          key={piece.id}
+          style={{
+            position: "absolute",
+            bottom: "-20px",
+            left: "50vw",
+            width: `${piece.width}px`,
+            height: `${piece.height}px`,
+            backgroundColor: piece.color,
+            animation: `confetti-burst 3.2s ${piece.delay}s both`,
+            ["--burst-x-mid" as string]: `${piece.xMid}vw`,
+            ["--burst-x-end" as string]: `${piece.xEnd}vw`,
+            ["--burst-peak" as string]: `${piece.peak}vh`,
+            ["--burst-spin-mid" as string]: `${piece.spinMid}deg`,
+            ["--burst-spin-end" as string]: `${piece.spinEnd}deg`,
+          }}
+        />
+      ))}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span
+          className="text-white font-extrabold text-center drop-shadow-lg px-4"
+          style={{
+            fontSize: "5rem",
+            animation: "celebration-pop 0.6s ease-out both",
+          }}
+        >
+          🎉 Well done {name}! 🎉
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const CountdownChip = ({
   minutesLeft,
@@ -80,14 +137,6 @@ const CountdownChip = ({
   );
 };
 
-const initialModelState: ModelState = {
-  config: config,
-  taskCompletionStatus: initialiseTaskCompletionStatus(config),
-  lastUpdate: new Date().toISOString(),
-};
-
-const model = new TaskModel(initialModelState);
-
 const overrideCurrentTime = (): Date => {
   const params = new URLSearchParams(window.location.search);
   const fixedTime = params.get("fixCurrentTime");
@@ -98,6 +147,16 @@ const overrideCurrentTime = (): Date => {
   }
   return new Date();
 };
+
+const initialModelState: ModelState = {
+  config: config,
+  taskCompletionStatus:
+    loadTaskCompletionStatus(config, dateKey(overrideCurrentTime())) ??
+    initialiseTaskCompletionStatus(config),
+  lastUpdate: new Date().toISOString(),
+};
+
+const model = new TaskModel(initialModelState);
 
 const useCurrentTime = (): Date => {
   const [currentTime, setCurrentTime] = useState(overrideCurrentTime());
@@ -115,25 +174,93 @@ const useCurrentTime = (): Date => {
 
 const App: React.FC = () => {
   const [completedTasks, setCompletedTasks] = useState<TaskCompletionStatus>(
-    {},
+    model.getState().taskCompletionStatus,
   );
   const [showWeekMenu, setShowWeekMenu] = useState(false);
+  const [celebrationQueue, setCelebrationQueue] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const celebrationId = useRef(0);
+  const previousAllDone = useRef<Record<string, boolean>>();
 
   const currentTime = useCurrentTime();
+
+  useEffect(() => {
+    const current: Record<string, boolean> = {};
+    config.forEach((child) => {
+      current[child.name] = child.tasks.every(
+        (task) => (completedTasks[child.name] ?? {})[task.name] ?? false,
+      );
+    });
+    const previous = previousAllDone.current;
+    previousAllDone.current = current;
+    if (!previous) {
+      return;
+    }
+    const newlyDone = config
+      .filter((child) => current[child.name] && !previous[child.name])
+      .map((child) => child.name);
+    if (newlyDone.length > 0) {
+      setCelebrationQueue((queue) => [
+        ...queue,
+        ...newlyDone.map((name) => ({ id: ++celebrationId.current, name })),
+      ]);
+    }
+  }, [completedTasks]);
+
+  const currentCelebration = celebrationQueue[0];
+
+  useEffect(() => {
+    if (!currentCelebration) {
+      return;
+    }
+    const timeout = setTimeout(
+      () => setCelebrationQueue((queue) => queue.slice(1)),
+      CELEBRATION_MILLIS,
+    );
+    return () => clearTimeout(timeout);
+  }, [currentCelebration]);
+
+  const longPressTimer = useRef<number>();
+  const longPressFired = useRef(false);
+
+  const syncFromModel = () => {
+    const status = model.getState().taskCompletionStatus;
+    setCompletedTasks(status);
+    saveTaskCompletionStatus(status, dateKey(currentTime));
+  };
 
   const handleTaskClick = (
     taskConfig: ChildTaskConfig,
     taskCompleted: TaskConfig,
   ) => {
-    console.log(
-      "task completed: " + JSON.stringify({ taskConfig, taskCompleted }),
-    );
+    if (longPressFired.current) {
+      longPressFired.current = false;
+      return;
+    }
     model.applyOperation({
       type: "TaskClicked",
       taskConfig,
       completed: taskCompleted,
     });
-    setCompletedTasks(model.getState().taskCompletionStatus);
+    syncFromModel();
+  };
+
+  const handleTaskUncheck = (taskConfig: ChildTaskConfig, task: TaskConfig) => {
+    model.applyOperation({ type: "TaskUnchecked", taskConfig, task });
+    syncFromModel();
+  };
+
+  const startLongPress = (taskConfig: ChildTaskConfig, task: TaskConfig) => {
+    longPressFired.current = false;
+    longPressTimer.current = window.setTimeout(() => {
+      longPressFired.current = true;
+      handleTaskUncheck(taskConfig, task);
+    }, 600);
+  };
+
+  const cancelLongPress = () => {
+    window.clearTimeout(longPressTimer.current);
   };
 
   return (
@@ -203,8 +330,15 @@ const App: React.FC = () => {
                         fontWeight: "700",
                         cursor: "pointer",
                         position: "relative",
+                        userSelect: "none",
+                        WebkitUserSelect: "none",
+                        WebkitTouchCallout: "none",
                       }}
                       onClick={() => handleTaskClick(child, taskConfig)}
+                      onPointerDown={() => startLongPress(child, taskConfig)}
+                      onPointerUp={cancelLongPress}
+                      onPointerLeave={cancelLongPress}
+                      onContextMenu={(e) => e.preventDefault()}
                     >
                       {/* Elapsed-time fill: the colour "catches up" with the schedule */}
                       {!done && fraction > 0 && (
@@ -266,6 +400,12 @@ const App: React.FC = () => {
         </div>
         <LunchPanel date={currentTime} title="Lunch today" />
       </div>
+      {currentCelebration && (
+        <CelebrationOverlay
+          key={currentCelebration.id}
+          name={currentCelebration.name}
+        />
+      )}
     </div>
   );
 };

@@ -105,6 +105,7 @@ export interface ModelState {
 
 type ModelOperation =
   | { type: "TaskClicked"; taskConfig: ChildTaskConfig; completed: TaskConfig }
+  | { type: "TaskUnchecked"; taskConfig: ChildTaskConfig; task: TaskConfig }
   | { type: "TimedPassed"; currentTime: Date };
 
 class TaskModel {
@@ -117,10 +118,19 @@ class TaskModel {
   public applyOperation(operation: ModelOperation): void {
     switch (operation.type) {
       case "TaskClicked":
-        this.state = TaskModel.taskClicked(
+        this.state = TaskModel.withTaskCompletion(
           this.state,
           operation.taskConfig,
           operation.completed,
+          true,
+        );
+        break;
+      case "TaskUnchecked":
+        this.state = TaskModel.withTaskCompletion(
+          this.state,
+          operation.taskConfig,
+          operation.task,
+          false,
         );
         break;
       case "TimedPassed":
@@ -130,10 +140,11 @@ class TaskModel {
     }
   }
 
-  private static taskClicked(
+  private static withTaskCompletion(
     state: ModelState,
     config: ChildTaskConfig,
-    taskCompleted: TaskConfig,
+    task: TaskConfig,
+    completed: boolean,
   ): ModelState {
     return {
       ...state,
@@ -141,7 +152,7 @@ class TaskModel {
         ...state.taskCompletionStatus,
         [config.name]: {
           ...state.taskCompletionStatus[config.name],
-          [taskCompleted.name]: true,
+          [task.name]: completed,
         },
       },
     };

@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { dateKey, LunchOptions, lunchOptionsFor } from "./lunches";
+import { activitiesFor } from "./model";
+import { config } from "./config";
+import { activityTags } from "./ActivityTags";
 
 const mondayOf = (date: Date) => startOfWeek(date, { weekStartsOn: 1 });
 
@@ -96,11 +99,17 @@ const WeekMenuPopup = ({
           className="grid gap-2 flex-1"
           style={{ gridTemplateColumns: "8rem repeat(5, 1fr)" }}
         >
+          <div
+            className="flex items-center justify-center text-center rounded-lg px-2 py-1 font-bold bg-blue-50 text-blue-800"
+            style={{ gridColumn: 1, gridRow: 2 }}
+          >
+            Activities
+          </div>
           {menuRows.map((row, r) => (
             <div
               key={row.label}
               className={`flex items-center justify-center text-center rounded-lg px-2 py-1 font-bold ${row.classes}`}
-              style={{ gridColumn: 1, gridRow: r + 2 }}
+              style={{ gridColumn: 1, gridRow: r + 3 }}
             >
               {row.label}
             </div>
@@ -119,19 +128,36 @@ const WeekMenuPopup = ({
                   {format(day, "EEE d")}
                 </div>
                 {options ? (
-                  menuRows.map((row, r) => (
+                  <>
                     <div
-                      key={row.label}
-                      className={`flex items-center justify-center text-center rounded-lg shadow-md px-2 py-1 font-semibold ${row.classes}`}
-                      style={{ gridColumn: c + 2, gridRow: r + 2 }}
+                      className="flex flex-wrap items-center justify-center gap-1 px-1 py-1"
+                      style={{ gridColumn: c + 2, gridRow: 2 }}
                     >
-                      {row.cell(options)}
+                      {config.flatMap((child) =>
+                        activitiesFor(child, day).map((activity) => (
+                          <span
+                            key={`${child.name}-${activity}`}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold shadow ${activityTags[activity].classes}`}
+                          >
+                            {child.name} {activityTags[activity].label}
+                          </span>
+                        )),
+                      )}
                     </div>
-                  ))
+                    {menuRows.map((row, r) => (
+                      <div
+                        key={row.label}
+                        className={`flex items-center justify-center text-center rounded-lg shadow-md px-2 py-1 font-semibold ${row.classes}`}
+                        style={{ gridColumn: c + 2, gridRow: r + 3 }}
+                      >
+                        {row.cell(options)}
+                      </div>
+                    ))}
+                  </>
                 ) : (
                   <div
                     className="flex items-center justify-center text-center rounded-lg bg-gray-100 text-gray-500 font-semibold px-2"
-                    style={{ gridColumn: c + 2, gridRow: "2 / 7" }}
+                    style={{ gridColumn: c + 2, gridRow: "2 / 8" }}
                   >
                     No school lunch
                   </div>
