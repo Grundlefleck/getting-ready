@@ -1,8 +1,10 @@
 import {
   ChildTaskConfig,
   elapsedFraction,
+  initialiseTaskCompletionStatus,
   minutesRemaining,
   parseHHmm,
+  TaskModel,
   taskWindows,
 } from "./model";
 
@@ -49,6 +51,63 @@ describe("elapsed fraction", () => {
 
   it("is capped at 1 after the task ends", () => {
     expect(elapsedFraction(window, at("09:00"))).toBe(1);
+  });
+});
+
+describe("task model", () => {
+  const otherChild: ChildTaskConfig = {
+    ...child,
+    name: "Other",
+  };
+  const buildModel = () =>
+    new TaskModel({
+      config: [child, otherChild],
+      taskCompletionStatus: initialiseTaskCompletionStatus([
+        child,
+        otherChild,
+      ]),
+      lastUpdate: at("07:45").toISOString(),
+    });
+
+  it("marks a clicked task as complete for that child only", () => {
+    const model = buildModel();
+
+    model.applyOperation({
+      type: "TaskClicked",
+      taskConfig: child,
+      completed: child.tasks[0],
+    });
+
+    const status = model.getState().taskCompletionStatus;
+    expect(status[child.name]["Eat breakfast"]).toBe(true);
+    expect(status[child.name]["Brush teeth"]).toBe(false);
+    expect(status[otherChild.name]["Eat breakfast"]).toBe(false);
+  });
+
+  it("produces a new state on every operation instead of mutating", () => {
+    const model = buildModel();
+    const before = model.getState();
+
+    model.applyOperation({
+      type: "TaskClicked",
+      taskConfig: child,
+      completed: child.tasks[0],
+    });
+    const after = model.getState();
+
+    expect(after).not.toBe(before);
+    expect(after.taskCompletionStatus).not.toBe(before.taskCompletionStatus);
+    expect(after.taskCompletionStatus[child.name]).not.toBe(
+      before.taskCompletionStatus[child.name],
+    );
+    // the prior snapshot is untouched
+    expect(before.taskCompletionStatus[child.name]["Eat breakfast"]).toBe(
+      false,
+    );
+    // untouched children share the same branch
+    expect(after.taskCompletionStatus[otherChild.name]).toBe(
+      before.taskCompletionStatus[otherChild.name],
+    );
   });
 });
 

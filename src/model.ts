@@ -89,40 +89,38 @@ class TaskModel {
   public applyOperation(operation: ModelOperation): void {
     switch (operation.type) {
       case "TaskClicked":
-        this.handleTaskClick(operation.taskConfig, operation.completed);
+        this.state = TaskModel.taskClicked(
+          this.state,
+          operation.taskConfig,
+          operation.completed,
+        );
         break;
       case "TimedPassed":
-        this.handleTimePassage(operation.currentTime);
         break;
       default:
         throw new Error(`Unhandled operation type: ${(operation as any).type}`);
     }
   }
 
-  private handleTaskClick(
+  private static taskClicked(
+    state: ModelState,
     config: ChildTaskConfig,
     taskCompleted: TaskConfig,
-  ): void {
-    this.state.taskCompletionStatus[config.name][taskCompleted.name] = true;
-  }
-
-  private handleTimePassage(currentTime: Date): void {
-    const now = currentTime.getTime();
+  ): ModelState {
+    return {
+      ...state,
+      taskCompletionStatus: {
+        ...state.taskCompletionStatus,
+        [config.name]: {
+          ...state.taskCompletionStatus[config.name],
+          [taskCompleted.name]: true,
+        },
+      },
+    };
   }
 
   public getState(): ModelState {
     return this.state;
-  }
-
-  public startTime(): Date {
-    const start = new Date();
-    start.setHours(7, 45);
-    return start;
-  }
-  endTime(): Date {
-    const end = new Date();
-    end.setHours(8, 55);
-    return end;
   }
 }
 
