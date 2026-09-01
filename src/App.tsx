@@ -11,6 +11,8 @@ import {
   taskWindows,
 } from "./model";
 import { config } from "./config";
+import LunchPanel from "./LunchPanel";
+import WeekMenuPopup from "./WeekMenuPopup";
 
 const StatusIcon = ({
   completed,
@@ -53,7 +55,7 @@ const CountdownChip = ({
           : "bg-red-600 text-white animate-pulse"
       }`}
     >
-      {minutesLeft > 0 ? `🚪 ${minutesLeft} min` : "🚪 Time to go!"}
+      {minutesLeft > 0 ? `🚪 ${minutesLeft} min to go` : "🚪 Time to go!"}
     </span>
   );
 };
@@ -95,6 +97,7 @@ const App: React.FC = () => {
   const [completedTasks, setCompletedTasks] = useState<TaskCompletionStatus>(
     {},
   );
+  const [showWeekMenu, setShowWeekMenu] = useState(false);
 
   const currentTime = useCurrentTime();
 
@@ -203,20 +206,36 @@ const App: React.FC = () => {
             </div>
           );
         })}
+        {showWeekMenu && (
+          <WeekMenuPopup
+            initialDate={currentTime}
+            today={currentTime}
+            onClose={() => setShowWeekMenu(false)}
+          />
+        )}
       </div>
 
-      {/* Clock at the bottom */}
+      {/* Bottom bar: clock, week menu and today's lunch options */}
       <div
-        className="flex-shrink-0 bg-white shadow-lg flex items-center justify-center p-4"
-        style={{ height: "100px" }}
+        className="flex-shrink-0 bg-white shadow-lg flex items-stretch gap-2 p-2"
+        style={{ height: "140px" }}
       >
-        <span className="text-lg font-semibold">
-          {currentTime.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          })}
-        </span>
+        <div className="flex flex-col items-center justify-center px-3 gap-1">
+          <span className="text-lg font-semibold">
+            {currentTime.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
+          </span>
+          <button
+            className="px-3 py-1 rounded-lg bg-blue-100 text-blue-700 font-semibold whitespace-nowrap"
+            onClick={() => setShowWeekMenu(true)}
+          >
+            📅 Week menu
+          </button>
+        </div>
+        <LunchPanel date={currentTime} title="Lunch today" />
       </div>
     </div>
   );
