@@ -1,20 +1,62 @@
 import React, { useEffect, useState } from "react";
 import {
   ChildTaskConfig,
+  elapsedFraction,
   initialiseTaskCompletionStatus,
+  minutesRemaining,
   ModelState,
   TaskCompletionStatus,
   TaskConfig,
   TaskModel,
+  taskWindows,
 } from "./model";
 import { config } from "./config";
 
-const StatusIcon = ({ completed }: { completed: boolean }) => (
+const StatusIcon = ({
+  completed,
+  overdue,
+}: {
+  completed: boolean;
+  overdue: boolean;
+}) => (
   <i
-    className={`fas ${completed ? "fa-check text-green-600" : "fa-hourglass-half text-yellow-900"} absolute bottom-2 right-2 fa-2x`}
+    className={`fas ${
+      completed
+        ? "fa-check text-green-600"
+        : overdue
+          ? "fa-hourglass-end text-red-600"
+          : "fa-hourglass-half text-yellow-900"
+    } absolute bottom-2 right-2 fa-2x`}
     style={{ opacity: 1 }}
   />
 );
+
+const CountdownChip = ({
+  minutesLeft,
+  allDone,
+}: {
+  minutesLeft: number;
+  allDone: boolean;
+}) => {
+  if (allDone) {
+    return (
+      <span className="mt-2 px-3 py-1 rounded-full text-sm font-bold shadow bg-green-600 text-white">
+        🎉 Ready!
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`mt-2 px-3 py-1 rounded-full text-sm font-bold shadow ${
+        minutesLeft > 0
+          ? "bg-white text-blue-900"
+          : "bg-red-600 text-white animate-pulse"
+      }`}
+    >
+      {minutesLeft > 0 ? `🚪 ${minutesLeft} min` : "🚪 Time to go!"}
+    </span>
+  );
+};
 
 const initialModelState: ModelState = {
   config: config,
@@ -37,9 +79,6 @@ const overrideCurrentTime = (): Date => {
 
 const useCurrentTime = (): Date => {
   const [currentTime, setCurrentTime] = useState(overrideCurrentTime());
-  const [completedTasks, setCompletedTasks] = useState<{
-    [key: string]: boolean;
-  }>({});
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -58,22 +97,6 @@ const App: React.FC = () => {
   );
 
   const currentTime = useCurrentTime();
-  const startTime = model.startTime();
-  const endTime = model.endTime();
-
-  const totalMinutes = Math.ceil(
-    (endTime.getTime() - startTime.getTime()) / (1000 * 60),
-  );
-
-  const timeConstrained = Math.min(
-    Math.max(currentTime.getTime(), startTime.getTime()),
-    endTime.getTime(),
-  );
-  const timeElapsed = Math.ceil(
-    (timeConstrained - startTime.getTime()) / (1000 * 60),
-  );
-  const tasksWidthPercentage = 82;
-  const linePosition = Math.min(100, (timeElapsed / totalMinutes) * 100 + (100 - tasksWidthPercentage) );
 
   const handleTaskClick = (
     taskConfig: ChildTaskConfig,
@@ -98,10 +121,14 @@ const App: React.FC = () => {
         style={{ width: "100%" }}
       >
         {model.getState().config.map((child, index) => {
-          const totalDuration =
-            child.tasks
-              .map((t) => t.duration)
-              .reduce((acc, val) => acc + val, 0) * tasksWidthPercentage;
+          const totalDuration = child.tasks
+            .map((t) => t.duration)
+            .reduce((acc, val) => acc + val, 0);
+          const windows = taskWindows(child, currentTime);
+          const minutesLeft = minutesRemaining(child, currentTime);
+          const allDone = child.tasks.every(
+            (task) => (completedTasks[child.name] ?? {})[task.name] ?? false,
+          );
 
           return (
             <div
@@ -109,15 +136,15 @@ const App: React.FC = () => {
               className="relative bg-white p-4 rounded-lg shadow-lg flex flex-row mb-4 flex-1"
               style={{ minHeight: "0" }}
             >
-              {/* Child's name on the left */}
-              <div className="w-1/6 flex items-center justify-center bg-blue-100 p-2 text-blue-700 font-semibold">
+              {/* Child's name and countdown on the left */}
+              <div className="w-1/6 flex flex-col items-center justify-center bg-blue-100 p-2 text-blue-700 font-semibold">
                 {child.name}
+                <CountdownChip minutesLeft={minutesLeft} allDone={allDone} />
               </div>
               {/* Tasks container */}
-              {/* Vertical line indicating the current time */}
               <div
                 className="relative flex flex-1 items-center overflow-x-auto bg-gray-200"
-                style={{ width: `${tasksWidthPercentage}%`, gap: "8px" }}
+                style={{ gap: "8px" }}
               >
                 {child.tasks.map((taskConfig, taskIndex) => {
                   const widthPercentage =
@@ -125,13 +152,24 @@ const App: React.FC = () => {
                   const completed =
                     (completedTasks[child.name] ?? {})[taskConfig.name] ??
                     false;
+                  const fraction = elapsedFraction(
+                    windows[taskIndex],
+                    currentTime,
+                  );
+                  const past = fraction >= 1;
+                  const done = completed && past;
+                  const overdue = past && !completed;
 
                   return (
                     <div
                       key={taskIndex}
-                      className={`flex items-center justify-center bg-blue-500 text-white rounded-lg shadow-md ${child.colorClass} text-blue-950`}
+                      className={`flex items-center justify-center rounded-lg shadow-md ${
+                        done
+                          ? "bg-gray-300 text-gray-500"
+                          : `${child.colorClass} text-blue-950`
+                      } ${overdue ? "animate-pulse" : ""}`}
                       style={{
-                        flex: `0 0 ${widthPercentage * tasksWidthPercentage}%`, // Distribute horizontal space equally
+                        flex: `0 0 ${widthPercentage}%`, // Width proportional to task duration
                         height: "100%", // Take up full height of swimlane
                         display: "flex",
                         justifyContent: "center",
@@ -143,7 +181,18 @@ const App: React.FC = () => {
                       }}
                       onClick={() => handleTaskClick(child, taskConfig)}
                     >
-                      <StatusIcon completed={completed} />
+                      {/* Elapsed-time fill: the colour "catches up" with the schedule */}
+                      {!done && fraction > 0 && (
+                        <div
+                          className={`absolute inset-y-0 left-0 bg-black/20 pointer-events-none rounded-l-lg ${
+                            fraction >= 1
+                              ? "rounded-r-lg"
+                              : "border-r-4 border-black/50"
+                          }`}
+                          style={{ width: `${fraction * 100}%` }}
+                        />
+                      )}
+                      <StatusIcon completed={completed} overdue={overdue} />
                       <span className={`ml-2 ${completed ? "font-bold" : ""}`}>
                         {taskConfig.name}
                       </span>
@@ -154,10 +203,6 @@ const App: React.FC = () => {
             </div>
           );
         })}
-        <div
-          className="absolute top-0 bottom-0 border-l-8 border-orange-900"
-          style={{ left: `${linePosition}%`, opacity: 0.4, width: "2px" }}
-        />
       </div>
 
       {/* Clock at the bottom */}
