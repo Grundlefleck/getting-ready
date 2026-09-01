@@ -4,7 +4,7 @@ Check off todo items while getting ready for school. Share a tablet where all th
 and see if they are on schedule for getting ready.
 
  - [x] configure the tasks per child that need to be complete before leaving
- - [ ] render the tasks in a swimlane per child
- - [ ] allow marking off a task as complete
+ - [x] render the tasks in a swimlane per child
+ - [x] allow marking off a task as complete
  - [ ] play a notification sound when a task is overdue
  - [ ] store current state for each day in localStorage to keep state across page refreshes
