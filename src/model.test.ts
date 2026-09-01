@@ -13,9 +13,9 @@ const child: ChildTaskConfig = {
   name: "Testy",
   startTime: "07:45",
   tasks: [
-    { name: "Eat breakfast", duration: 30 },
-    { name: "Brush teeth", duration: 3 },
-    { name: "Get dressed", duration: 15 },
+    { name: "Eat breakfast", duration: 30, emoji: "🥣" },
+    { name: "Brush teeth", duration: 3, emoji: "🪥", },
+    { name: "Get dressed", duration: 15, emoji: "👕" },
   ],
   colorClass: "bg-red-600",
 };

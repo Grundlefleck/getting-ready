@@ -196,6 +196,7 @@ const App: React.FC = () => {
                         flex: `0 0 ${widthPercentage}%`, // Width proportional to task duration
                         height: "100%", // Take up full height of swimlane
                         display: "flex",
+                        flexDirection: "column",
                         justifyContent: "center",
                         alignItems: "center",
                         fontSize: "1.5rem",
@@ -217,7 +218,14 @@ const App: React.FC = () => {
                         />
                       )}
                       <StatusIcon completed={completed} overdue={overdue} />
-                      <span className={`ml-2 ${completed ? "font-bold" : ""}`}>
+                      {taskConfig.emoji && (
+                        <span className="text-4xl leading-none">
+                          {taskConfig.emoji}
+                        </span>
+                      )}
+                      <span
+                        className={`text-center ${completed ? "font-bold" : ""}`}
+                      >
                         {taskConfig.name}
                       </span>
                     </div>

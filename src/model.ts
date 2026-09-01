@@ -3,6 +3,7 @@ export type HHmm = `${number}${number}:${number}${number}`;
 export interface TaskConfig {
   name: string;
   duration: number;
+  emoji: string;
 }
 
 export type Activity = "pe" | "outdoor";
