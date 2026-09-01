@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
+  Activity,
+  activitiesFor,
   ChildTaskConfig,
   elapsedFraction,
   initialiseTaskCompletionStatus,
@@ -31,6 +33,24 @@ const StatusIcon = ({
     } absolute bottom-2 right-2 fa-2x`}
     style={{ opacity: 1 }}
   />
+);
+
+const activityTags: Record<Activity, { label: string; classes: string }> = {
+  pe: { label: "🤸 PE", classes: "bg-orange-200 text-orange-900" },
+  outdoor: { label: "🌳 Outdoor", classes: "bg-green-200 text-green-900" },
+};
+
+const ActivityTags = ({ activities }: { activities: Activity[] }) => (
+  <>
+    {activities.map((activity) => (
+      <span
+        key={activity}
+        className={`mt-1 px-2 py-0.5 rounded-full text-xs font-bold shadow ${activityTags[activity].classes}`}
+      >
+        {activityTags[activity].label}
+      </span>
+    ))}
+  </>
 );
 
 const CountdownChip = ({
@@ -143,6 +163,7 @@ const App: React.FC = () => {
               <div className="w-1/6 flex flex-col items-center justify-center bg-blue-100 p-2 text-blue-700 font-semibold">
                 {child.name}
                 <CountdownChip minutesLeft={minutesLeft} allDone={allDone} />
+                <ActivityTags activities={activitiesFor(child, currentTime)} />
               </div>
               {/* Tasks container */}
               <div

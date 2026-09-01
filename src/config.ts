@@ -14,6 +14,7 @@ export const config: ChildTaskConfig[] = [
       { name: "Shoes and coat on", duration: 2 },
     ],
     colorClass: "bg-red-600",
+    activities: { tuesday: ["pe"], thursday: ["pe"], wednesday: ["outdoor"] },
   },
   {
     name: "Calum",
@@ -28,6 +29,7 @@ export const config: ChildTaskConfig[] = [
       { name: "Shoes and coat on", duration: 2 },
     ],
     colorClass: "bg-blue-600",
+    activities: { wednesday: ["pe"], thursday: ["pe"], monday: ["outdoor"] },
   },
   {
     name: "Dylan",
@@ -42,5 +44,6 @@ export const config: ChildTaskConfig[] = [
       { name: "Shoes and coat on", duration: 2 },
     ],
     colorClass: "bg-purple-300",
+    activities: { monday: ["pe"], friday: ["pe"], wednesday: ["outdoor"] },
   },
 ];

@@ -1,4 +1,5 @@
 import {
+  activitiesFor,
   ChildTaskConfig,
   elapsedFraction,
   initialiseTaskCompletionStatus,
@@ -51,6 +52,33 @@ describe("elapsed fraction", () => {
 
   it("is capped at 1 after the task ends", () => {
     expect(elapsedFraction(window, at("09:00"))).toBe(1);
+  });
+});
+
+describe("activities", () => {
+  const peChild: ChildTaskConfig = {
+    ...child,
+    activities: { tuesday: ["pe"], thursday: ["pe", "outdoor"] },
+  };
+
+  it("lists the configured activities for that weekday", () => {
+    expect(activitiesFor(peChild, new Date("2026-09-01T08:00:00"))).toEqual([
+      "pe",
+    ]);
+    expect(activitiesFor(peChild, new Date("2026-09-03T08:00:00"))).toEqual([
+      "pe",
+      "outdoor",
+    ]);
+  });
+
+  it("is empty on unconfigured days, weekends, and for children without activities", () => {
+    expect(activitiesFor(peChild, new Date("2026-09-02T08:00:00"))).toEqual(
+      [],
+    );
+    expect(activitiesFor(peChild, new Date("2026-09-05T08:00:00"))).toEqual(
+      [],
+    );
+    expect(activitiesFor(child, new Date("2026-09-01T08:00:00"))).toEqual([]);
   });
 });
 

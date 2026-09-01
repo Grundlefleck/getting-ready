@@ -5,12 +5,39 @@ export interface TaskConfig {
   duration: number;
 }
 
+export type Activity = "pe" | "outdoor";
+export type Weekday =
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday";
+
 interface ChildTaskConfig {
   name: string;
   startTime: HHmm;
   tasks: TaskConfig[];
   colorClass: string;
+  activities?: Partial<Record<Weekday, Activity[]>>;
 }
+
+const WEEKDAY_BY_DAY_INDEX: (Weekday | undefined)[] = [
+  undefined,
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  undefined,
+];
+
+export const activitiesFor = (
+  child: ChildTaskConfig,
+  date: Date,
+): Activity[] => {
+  const weekday = WEEKDAY_BY_DAY_INDEX[date.getDay()];
+  return weekday ? (child.activities?.[weekday] ?? []) : [];
+};
 
 export interface TaskWindow {
   start: Date;
