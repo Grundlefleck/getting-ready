@@ -22,8 +22,8 @@ export const loadTaskCompletionStatus = (
     const status = initialiseTaskCompletionStatus(config);
     for (const child of config) {
       for (const task of child.tasks) {
-        if (stored.taskCompletionStatus?.[child.name]?.[task.name] === true) {
-          status[child.name][task.name] = true;
+        if (stored.taskCompletionStatus?.[child.name]?.[task.id] === true) {
+          status[child.name][task.id] = true;
         }
       }
     }

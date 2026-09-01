@@ -1,6 +1,7 @@
 export type HHmm = `${number}${number}:${number}${number}`;
 
 export interface TaskConfig {
+  id: string;
   name: string;
   duration: number;
   emoji: string;
@@ -86,7 +87,7 @@ export const initialiseTaskCompletionStatus = (config: ChildTaskConfig[]) => {
   config.forEach((config) => {
     const incompleteTasks = config.tasks.reduce(
       (accum, task) => {
-        accum[task.name] = false;
+        accum[task.id] = false;
         return accum;
       },
       {} as Record<string, boolean>,
@@ -152,7 +153,7 @@ class TaskModel {
         ...state.taskCompletionStatus,
         [config.name]: {
           ...state.taskCompletionStatus[config.name],
-          [task.name]: completed,
+          [task.id]: completed,
         },
       },
     };

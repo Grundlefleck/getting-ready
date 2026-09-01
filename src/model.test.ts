@@ -13,9 +13,9 @@ const child: ChildTaskConfig = {
   name: "Testy",
   startTime: "07:45",
   tasks: [
-    { name: "Eat breakfast", duration: 30, emoji: "🥣" },
-    { name: "Brush teeth", duration: 3, emoji: "🪥", },
-    { name: "Get dressed", duration: 15, emoji: "👕" },
+    { id: "eat-breakfast", name: "Eat breakfast", duration: 30, emoji: "🥣" },
+    { id: "brush-teeth", name: "Brush teeth", duration: 3, emoji: "🪥" },
+    { id: "get-dressed", name: "Get dressed", duration: 15, emoji: "👕" },
   ],
   colorClass: "bg-red-600",
 };
@@ -107,9 +107,9 @@ describe("task model", () => {
     });
 
     const status = model.getState().taskCompletionStatus;
-    expect(status[child.name]["Eat breakfast"]).toBe(true);
-    expect(status[child.name]["Brush teeth"]).toBe(false);
-    expect(status[otherChild.name]["Eat breakfast"]).toBe(false);
+    expect(status[child.name]["eat-breakfast"]).toBe(true);
+    expect(status[child.name]["brush-teeth"]).toBe(false);
+    expect(status[otherChild.name]["eat-breakfast"]).toBe(false);
   });
 
   it("unchecks a previously completed task", () => {
@@ -126,7 +126,7 @@ describe("task model", () => {
       task: child.tasks[0],
     });
 
-    expect(model.getState().taskCompletionStatus[child.name]["Eat breakfast"]).toBe(
+    expect(model.getState().taskCompletionStatus[child.name]["eat-breakfast"]).toBe(
       false,
     );
   });
@@ -148,7 +148,7 @@ describe("task model", () => {
       before.taskCompletionStatus[child.name],
     );
     // the prior snapshot is untouched
-    expect(before.taskCompletionStatus[child.name]["Eat breakfast"]).toBe(
+    expect(before.taskCompletionStatus[child.name]["eat-breakfast"]).toBe(
       false,
     );
     // untouched children share the same branch

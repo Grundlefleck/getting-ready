@@ -9,8 +9,8 @@ const config: ChildTaskConfig[] = [
     name: "Testy",
     startTime: "07:45",
     tasks: [
-      { name: "Eat breakfast", emoji: "🥣", duration: 30 },
-      { name: "Brush teeth", emoji: "🪥", duration: 3 },
+      { id: "eat-breakfast", name: "Eat breakfast", emoji: "🥣", duration: 30 },
+      { id: "brush-teeth", name: "Brush teeth", emoji: "🪥", duration: 3 },
     ],
     colorClass: "bg-red-600",
   },
@@ -27,18 +27,18 @@ describe("storage", () => {
 
   it("round-trips completion status for the same day", () => {
     saveTaskCompletionStatus(
-      { Testy: { "Eat breakfast": true, "Brush teeth": false } },
+      { Testy: { "eat-breakfast": true, "brush-teeth": false } },
       "2026-09-01",
     );
 
     expect(loadTaskCompletionStatus(config, "2026-09-01")).toEqual({
-      Testy: { "Eat breakfast": true, "Brush teeth": false },
+      Testy: { "eat-breakfast": true, "brush-teeth": false },
     });
   });
 
   it("ignores state stored for a different day", () => {
     saveTaskCompletionStatus(
-      { Testy: { "Eat breakfast": true, "Brush teeth": true } },
+      { Testy: { "eat-breakfast": true, "brush-teeth": true } },
       "2026-09-01",
     );
 
@@ -47,12 +47,12 @@ describe("storage", () => {
 
   it("drops stored tasks that are no longer configured and defaults new ones", () => {
     saveTaskCompletionStatus(
-      { Testy: { "Eat breakfast": true, "Wash face": true } },
+      { Testy: { "eat-breakfast": true, "wash-face": true } },
       "2026-09-01",
     );
 
     expect(loadTaskCompletionStatus(config, "2026-09-01")).toEqual({
-      Testy: { "Eat breakfast": true, "Brush teeth": false },
+      Testy: { "eat-breakfast": true, "brush-teeth": false },
     });
   });
 

@@ -35,8 +35,8 @@ const StatusIcon = ({
         : overdue
           ? "fa-hourglass-end text-red-600"
           : "fa-hourglass-half text-yellow-900"
-    } absolute bottom-2 right-2 fa-2x`}
-    style={{ opacity: 1 }}
+    } absolute bottom-1 right-1`}
+    style={{ fontSize: "clamp(0.9rem, 1.9vw, 1.9rem)" }}
   />
 );
 
@@ -189,7 +189,7 @@ const App: React.FC = () => {
     const current: Record<string, boolean> = {};
     config.forEach((child) => {
       current[child.name] = child.tasks.every(
-        (task) => (completedTasks[child.name] ?? {})[task.name] ?? false,
+        (task) => (completedTasks[child.name] ?? {})[task.id] ?? false,
       );
     });
     const previous = previousAllDone.current;
@@ -277,7 +277,7 @@ const App: React.FC = () => {
           const windows = taskWindows(child, currentTime);
           const minutesLeft = minutesRemaining(child, currentTime);
           const allDone = child.tasks.every(
-            (task) => (completedTasks[child.name] ?? {})[task.name] ?? false,
+            (task) => (completedTasks[child.name] ?? {})[task.id] ?? false,
           );
 
           return (
@@ -301,7 +301,7 @@ const App: React.FC = () => {
                   const widthPercentage =
                     (taskConfig.duration / totalDuration) * 100;
                   const completed =
-                    (completedTasks[child.name] ?? {})[taskConfig.name] ??
+                    (completedTasks[child.name] ?? {})[taskConfig.id] ??
                     false;
                   const fraction = elapsedFraction(
                     windows[taskIndex],
@@ -326,7 +326,7 @@ const App: React.FC = () => {
                         flexDirection: "column",
                         justifyContent: "center",
                         alignItems: "center",
-                        fontSize: "1.5rem",
+                        fontSize: "clamp(0.75rem, 1.5vw, 1.5rem)",
                         fontWeight: "700",
                         cursor: "pointer",
                         position: "relative",
@@ -353,7 +353,10 @@ const App: React.FC = () => {
                       )}
                       <StatusIcon completed={completed} overdue={overdue} />
                       {taskConfig.emoji && (
-                        <span className="text-4xl leading-none">
+                        <span
+                          className="leading-none"
+                          style={{ fontSize: "clamp(1.1rem, 2.4vw, 2.25rem)" }}
+                        >
                           {taskConfig.emoji}
                         </span>
                       )}
