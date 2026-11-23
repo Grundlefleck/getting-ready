@@ -72,12 +72,8 @@ describe("activities", () => {
   });
 
   it("is empty on unconfigured days, weekends, and for children without activities", () => {
-    expect(activitiesFor(peChild, new Date("2026-09-02T08:00:00"))).toEqual(
-      [],
-    );
-    expect(activitiesFor(peChild, new Date("2026-09-05T08:00:00"))).toEqual(
-      [],
-    );
+    expect(activitiesFor(peChild, new Date("2026-09-02T08:00:00"))).toEqual([]);
+    expect(activitiesFor(peChild, new Date("2026-09-05T08:00:00"))).toEqual([]);
     expect(activitiesFor(child, new Date("2026-09-01T08:00:00"))).toEqual([]);
   });
 });
@@ -90,10 +86,7 @@ describe("task model", () => {
   const buildModel = () =>
     new TaskModel({
       config: [child, otherChild],
-      taskCompletionStatus: initialiseTaskCompletionStatus([
-        child,
-        otherChild,
-      ]),
+      taskCompletionStatus: initialiseTaskCompletionStatus([child, otherChild]),
       lastUpdate: at("07:45").toISOString(),
     });
 
@@ -126,9 +119,9 @@ describe("task model", () => {
       task: child.tasks[0],
     });
 
-    expect(model.getState().taskCompletionStatus[child.name]["eat-breakfast"]).toBe(
-      false,
-    );
+    expect(
+      model.getState().taskCompletionStatus[child.name]["eat-breakfast"],
+    ).toBe(false);
   });
 
   it("produces a new state on every operation instead of mutating", () => {

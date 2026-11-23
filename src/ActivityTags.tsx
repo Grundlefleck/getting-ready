@@ -1,11 +1,13 @@
 import React from "react";
 import { Activity } from "./model";
 
-export const activityTags: Record<Activity, { label: string; classes: string }> =
-  {
-    pe: { label: "🤸 PE", classes: "bg-orange-200 text-orange-900" },
-    outdoor: { label: "🌳 Outdoor", classes: "bg-green-200 text-green-900" },
-  };
+export const activityTags: Record<
+  Activity,
+  { label: string; classes: string }
+> = {
+  pe: { label: "🤸 PE", classes: "bg-orange-200 text-orange-900" },
+  outdoor: { label: "🌳 Outdoor", classes: "bg-green-200 text-green-900" },
+};
 
 const ActivityTags = ({ activities }: { activities: Activity[] }) => (
   <>

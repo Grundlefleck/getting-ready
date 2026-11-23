@@ -16,10 +16,10 @@ import ActivityTags from "./ActivityTags";
 import LunchPanel from "./LunchPanel";
 import WeekMenuPopup from "./WeekMenuPopup";
 import { dateKey } from "./lunches";
-import {
-  loadTaskCompletionStatus,
-  saveTaskCompletionStatus,
-} from "./storage";
+import { loadTaskCompletionStatus, saveTaskCompletionStatus } from "./storage";
+import { overrideCurrentTime, useCurrentTime } from "./clock";
+import CelebrationOverlay, { CELEBRATION_MILLIS } from "./Celebration";
+import { useLongPress } from "./longPress";
 
 const StatusIcon = ({
   completed,
@@ -39,76 +39,6 @@ const StatusIcon = ({
     style={{ fontSize: "clamp(0.9rem, 1.9vw, 1.9rem)" }}
   />
 );
-
-const CONFETTI_COLORS = [
-  "#ef4444",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#3b82f6",
-  "#a855f7",
-  "#ec4899",
-];
-
-const CELEBRATION_MILLIS = 4000;
-
-const CelebrationOverlay = ({ name }: { name: string }) => {
-  const [pieces] = useState(() =>
-    Array.from({ length: 120 }, (_, id) => {
-      const xMid = (Math.random() - 0.5) * 90;
-      return {
-        id,
-        delay: Math.random() * 0.4,
-        width: 8 + Math.random() * 6,
-        height: 10 + Math.random() * 8,
-        color: CONFETTI_COLORS[id % CONFETTI_COLORS.length],
-        xMid,
-        xEnd: xMid + (Math.random() - 0.5) * 20,
-        peak: -(40 + Math.random() * 45),
-        spinMid: 360 + Math.random() * 360,
-        spinEnd: 720 + Math.random() * 720,
-      };
-    }),
-  );
-
-  return (
-    <div
-      className="fixed inset-0 z-50 pointer-events-none overflow-hidden bg-black/30"
-      data-testid="celebration"
-    >
-      {pieces.map((piece) => (
-        <span
-          key={piece.id}
-          style={{
-            position: "absolute",
-            bottom: "-20px",
-            left: "50vw",
-            width: `${piece.width}px`,
-            height: `${piece.height}px`,
-            backgroundColor: piece.color,
-            animation: `confetti-burst 3.2s ${piece.delay}s both`,
-            ["--burst-x-mid" as string]: `${piece.xMid}vw`,
-            ["--burst-x-end" as string]: `${piece.xEnd}vw`,
-            ["--burst-peak" as string]: `${piece.peak}vh`,
-            ["--burst-spin-mid" as string]: `${piece.spinMid}deg`,
-            ["--burst-spin-end" as string]: `${piece.spinEnd}deg`,
-          }}
-        />
-      ))}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span
-          className="text-white font-extrabold text-center drop-shadow-lg px-4"
-          style={{
-            fontSize: "5rem",
-            animation: "celebration-pop 0.6s ease-out both",
-          }}
-        >
-          🎉 Well done {name}! 🎉
-        </span>
-      </div>
-    </div>
-  );
-};
 
 const CountdownChip = ({
   minutesLeft,
@@ -137,17 +67,6 @@ const CountdownChip = ({
   );
 };
 
-const overrideCurrentTime = (): Date => {
-  const params = new URLSearchParams(window.location.search);
-  const fixedTime = params.get("fixCurrentTime");
-
-  if (fixedTime) {
-    const parsedTime = new Date(fixedTime);
-    return isNaN(parsedTime.getTime()) ? new Date() : parsedTime;
-  }
-  return new Date();
-};
-
 const initialModelState: ModelState = {
   config: config,
   taskCompletionStatus:
@@ -157,20 +76,6 @@ const initialModelState: ModelState = {
 };
 
 const model = new TaskModel(initialModelState);
-
-const useCurrentTime = (): Date => {
-  const [currentTime, setCurrentTime] = useState(overrideCurrentTime());
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setCurrentTime(overrideCurrentTime);
-    }, 1000);
-
-    return () => clearInterval(intervalId);
-  }, []);
-
-  return currentTime;
-};
 
 const App: React.FC = () => {
   const [completedTasks, setCompletedTasks] = useState<TaskCompletionStatus>(
@@ -221,8 +126,7 @@ const App: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [currentCelebration]);
 
-  const longPressTimer = useRef<number>();
-  const longPressFired = useRef(false);
+  const longPress = useLongPress();
 
   const syncFromModel = () => {
     const status = model.getState().taskCompletionStatus;
@@ -234,10 +138,6 @@ const App: React.FC = () => {
     taskConfig: ChildTaskConfig,
     taskCompleted: TaskConfig,
   ) => {
-    if (longPressFired.current) {
-      longPressFired.current = false;
-      return;
-    }
     model.applyOperation({
       type: "TaskClicked",
       taskConfig,
@@ -249,18 +149,6 @@ const App: React.FC = () => {
   const handleTaskUncheck = (taskConfig: ChildTaskConfig, task: TaskConfig) => {
     model.applyOperation({ type: "TaskUnchecked", taskConfig, task });
     syncFromModel();
-  };
-
-  const startLongPress = (taskConfig: ChildTaskConfig, task: TaskConfig) => {
-    longPressFired.current = false;
-    longPressTimer.current = window.setTimeout(() => {
-      longPressFired.current = true;
-      handleTaskUncheck(taskConfig, task);
-    }, 600);
-  };
-
-  const cancelLongPress = () => {
-    window.clearTimeout(longPressTimer.current);
   };
 
   return (
@@ -301,8 +189,7 @@ const App: React.FC = () => {
                   const widthPercentage =
                     (taskConfig.duration / totalDuration) * 100;
                   const completed =
-                    (completedTasks[child.name] ?? {})[taskConfig.id] ??
-                    false;
+                    (completedTasks[child.name] ?? {})[taskConfig.id] ?? false;
                   const fraction = elapsedFraction(
                     windows[taskIndex],
                     currentTime,
@@ -334,11 +221,10 @@ const App: React.FC = () => {
                         WebkitUserSelect: "none",
                         WebkitTouchCallout: "none",
                       }}
-                      onClick={() => handleTaskClick(child, taskConfig)}
-                      onPointerDown={() => startLongPress(child, taskConfig)}
-                      onPointerUp={cancelLongPress}
-                      onPointerLeave={cancelLongPress}
-                      onContextMenu={(e) => e.preventDefault()}
+                      {...longPress(
+                        () => handleTaskClick(child, taskConfig),
+                        () => handleTaskUncheck(child, taskConfig),
+                      )}
                     >
                       {/* Elapsed-time fill: the colour "catches up" with the schedule */}
                       {!done && fraction > 0 && (
@@ -406,7 +292,7 @@ const App: React.FC = () => {
       {currentCelebration && (
         <CelebrationOverlay
           key={currentCelebration.id}
-          name={currentCelebration.name}
+          message={`🎉 Well done ${currentCelebration.name}! 🎉`}
         />
       )}
     </div>

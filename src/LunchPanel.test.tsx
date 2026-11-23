@@ -10,12 +10,16 @@ describe("lunch panel", () => {
     );
 
     expect(
-      screen.getByText("Cheese or Beef Burger in a Bun with Potato Wedges, Tomato Sauce"),
+      screen.getByText(
+        "Cheese or Beef Burger in a Bun with Potato Wedges, Tomato Sauce",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Tomato, Pepper and Basil Pasta with Potato Wedges"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Cheese Sandwich and Coleslaw")).toBeInTheDocument();
+    expect(
+      screen.getByText("Cheese Sandwich and Coleslaw"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Carrot Cake/)).toBeInTheDocument();
   });
 

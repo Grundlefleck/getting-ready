@@ -1,8 +1,5 @@
 import { ChildTaskConfig } from "./model";
-import {
-  loadTaskCompletionStatus,
-  saveTaskCompletionStatus,
-} from "./storage";
+import { loadTaskCompletionStatus, saveTaskCompletionStatus } from "./storage";
 
 const config: ChildTaskConfig[] = [
   {
