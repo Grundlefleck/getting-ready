@@ -4,6 +4,7 @@ import TidyApp from "./TidyApp";
 
 beforeEach(() => {
   localStorage.clear();
+  jest.spyOn(Math, "random").mockReturnValue(0);
   window.history.replaceState(
     {},
     "",
@@ -11,7 +12,12 @@ beforeEach(() => {
   );
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 const tap = (label: string) => fireEvent.click(screen.getByLabelText(label));
+const click = (text: string) => fireEvent.click(screen.getByText(text));
 
 describe("tidy up", () => {
   it("opens on the Before karate jobs with an empty jar", () => {
@@ -81,5 +87,79 @@ describe("tidy up", () => {
 
     render(<TidyApp />);
     expect(screen.getByText("1 / 3 done")).toBeInTheDocument();
+  });
+
+  it("can show the mess monster instead, which takes a hit per marble", () => {
+    render(<TidyApp />);
+    click("✏️ Jobs");
+    click("👾 Mess monster");
+    click("Done");
+
+    tap("Jacob: Lay out karate gear");
+    tap("Calum: Lay out karate gear");
+
+    expect(screen.getByTestId("monster")).toBeInTheDocument();
+    expect(screen.getAllByTestId("hit")).toHaveLength(4);
+    expect(screen.queryAllByTestId("marble")).toHaveLength(0);
+  });
+
+  it("picks the reward at random on a new day", () => {
+    jest.spyOn(Math, "random").mockReturnValue(0.9);
+    render(<TidyApp />);
+
+    expect(screen.getByTestId("monster")).toBeInTheDocument();
+  });
+
+  it("edits a job's kind and deletes jobs, remembering both", () => {
+    const { unmount } = render(<TidyApp />);
+    click("✏️ Jobs");
+
+    tap("Edit Pyjamas to bedroom");
+    fireEvent.change(screen.getByLabelText("Kind of job"), {
+      target: { value: "each" },
+    });
+    click("Save");
+
+    tap("Edit Lay out karate gear");
+    click("Delete");
+    click("Done");
+    unmount();
+
+    render(<TidyApp />);
+    expect(screen.getAllByText("0 / 3 done")).toHaveLength(3);
+    expect(screen.queryByText("Lay out karate gear")).not.toBeInTheDocument();
+    click("✏️ Jobs");
+    expect(screen.queryByText("Lay out karate gear")).not.toBeInTheDocument();
+  });
+
+  it("remembers the chosen celebration", () => {
+    const { unmount } = render(<TidyApp />);
+    click("✏️ Jobs");
+    expect(screen.getByText("🎲 Random")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    click("🔥 Fire");
+    unmount();
+
+    render(<TidyApp />);
+    click("✏️ Jobs");
+    expect(screen.getByText("🔥 Fire")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("adds a job with an emoji picked from the grid", () => {
+    render(<TidyApp />);
+    click("✏️ Jobs");
+
+    tap("Emoji");
+    fireEvent.click(screen.getByRole("button", { name: "📚" }));
+    fireEvent.change(screen.getByLabelText("Job name"), {
+      target: { value: "Books on the shelf" },
+    });
+    click("Add");
+    click("Done");
+
+    expect(screen.getByText("Books on the shelf")).toBeInTheDocument();
+    expect(screen.getAllByText("📚").length).toBeGreaterThan(0);
   });
 });

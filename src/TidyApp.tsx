@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { config } from "./config";
+import BadgeList from "./BadgeList";
+import { colorOf, config } from "./config";
 import { dateKey } from "./lunches";
 import { overrideCurrentTime, useCurrentTime } from "./clock";
-import CelebrationOverlay, { CELEBRATION_MILLIS } from "./Celebration";
+import CelebrationOverlay from "./Celebration";
 import MarbleJar from "./MarbleJar";
+import MessMonster from "./MessMonster";
 import JobPicker from "./JobPicker";
 import { useLongPress } from "./longPress";
 import { defaultTidyLibrary, tidyPresets } from "./tidyConfig";
@@ -24,23 +26,26 @@ import {
   shares,
   tallyOf,
   TidyOperation,
+  TidyReward,
+  tidyRewards,
   TidyRun,
   TidyTask,
   totalOf,
   transition,
 } from "./tidyModel";
 import {
+  CelebrationChoice,
+  loadTidyCelebration,
   loadTidyHistory,
   loadTidyLibrary,
   loadTidyRun,
   recordTidyHistory,
-  saveCustomTidyTasks,
+  saveTidyCelebration,
+  saveTidyLibrary,
   saveTidyRun,
 } from "./tidyStorage";
 
 const children = config.map((child) => child.name);
-const colorOf = (name: string) =>
-  config.find((child) => child.name === name)?.colorClass ?? "bg-gray-400";
 
 const TOAST_MILLIS = 2500;
 
@@ -51,6 +56,8 @@ const formatSeconds = (seconds: number) => {
 
 const today = () => dateKey(overrideCurrentTime());
 const nowMillis = () => overrideCurrentTime().getTime();
+const randomReward = () =>
+  tidyRewards[Math.floor(Math.random() * tidyRewards.length)];
 
 const FaceButton = ({
   child,
@@ -262,13 +269,14 @@ const TidyApp: React.FC = () => {
     loadTidyLibrary(defaultTidyLibrary),
   );
   const [run, setRun] = useState<TidyRun>(() =>
-    runForDay(loadTidyRun(), today(), tidyPresets[0].taskIds),
+    runForDay(loadTidyRun(), today(), tidyPresets[0].taskIds, randomReward()),
   );
   const [history, setHistory] = useState(loadTidyHistory);
   const [showPicker, setShowPicker] = useState(
     () => activeTasks(run, library).length === 0,
   );
   const [celebrating, setCelebrating] = useState(false);
+  const [celebration, setCelebration] = useState(loadTidyCelebration);
   const [summaryDismissed, setSummaryDismissed] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string }>();
 
@@ -280,6 +288,8 @@ const TidyApp: React.FC = () => {
   const jobsLeft = tasks.filter((t) => !isDone(run, t, children)).length;
   const finished = run.finishedAt !== undefined;
   const finalSeconds = elapsedSeconds(run, run.finishedAt ?? 0);
+  const reward = run.reward ?? "jar";
+  const earned = marbles(run, library, children);
 
   const commit = (next: TidyRun, nextLibrary = library) => {
     if (next === run) {
@@ -318,14 +328,6 @@ const TidyApp: React.FC = () => {
     );
 
   useEffect(() => {
-    if (!celebrating) {
-      return;
-    }
-    const timeout = setTimeout(() => setCelebrating(false), CELEBRATION_MILLIS);
-    return () => clearTimeout(timeout);
-  }, [celebrating]);
-
-  useEffect(() => {
     if (!toast) {
       return;
     }
@@ -333,17 +335,34 @@ const TidyApp: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [toast]);
 
-  const addTask = (task: TidyTask) => {
-    const nextLibrary = [...library, task];
+  const changeLibrary = (nextLibrary: TidyTask[], taskIds: string[]) => {
     setLibrary(nextLibrary);
-    saveCustomTidyTasks(nextLibrary, defaultTidyLibrary);
-    apply(
-      { type: "JobsChosen", taskIds: [...run.taskIds, task.id] },
-      nextLibrary,
-    );
+    saveTidyLibrary(nextLibrary, defaultTidyLibrary);
+    apply({ type: "JobsChosen", taskIds }, nextLibrary);
   };
 
-  const startFresh = () => commit(newRun(today(), run.taskIds));
+  const saveTask = (task: TidyTask) =>
+    library.some((t) => t.id === task.id)
+      ? changeLibrary(
+          library.map((t) => (t.id === task.id ? task : t)),
+          run.taskIds,
+        )
+      : changeLibrary([...library, task], [...run.taskIds, task.id]);
+
+  const deleteTask = (taskId: string) =>
+    changeLibrary(
+      library.filter((t) => t.id !== taskId),
+      run.taskIds.filter((id) => id !== taskId),
+    );
+
+  const chooseReward = (next: TidyReward) => commit({ ...run, reward: next });
+
+  const chooseCelebration = (choice: CelebrationChoice) => {
+    setCelebration(choice);
+    saveTidyCelebration(choice);
+  };
+
+  const startFresh = () => commit(newRun(today(), run.taskIds, reward));
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -376,11 +395,15 @@ const TidyApp: React.FC = () => {
               {Math.round(overall * 100)}%
             </span>
           </div>
-          <MarbleJar
-            marbles={marbles(run, library, children)}
-            capacity={marbleCapacity(run, library)}
-            colorOf={colorOf}
-          />
+          {reward === "monster" ? (
+            <MessMonster progress={overall} hits={earned} colorOf={colorOf} />
+          ) : (
+            <MarbleJar
+              marbles={earned}
+              capacity={marbleCapacity(run, library)}
+              colorOf={colorOf}
+            />
+          )}
           <div className="flex flex-col gap-2">
             {children.map((child) => (
               <div key={child} className="flex items-center gap-2 font-bold">
@@ -448,26 +471,7 @@ const TidyApp: React.FC = () => {
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-3 justify-center">
-              {badges(run, library, children).map((badge) => (
-                <div
-                  key={badge.child}
-                  className="flex items-center gap-3 bg-gray-100 rounded-xl px-4 py-2 text-left"
-                >
-                  <span
-                    className={`w-10 h-10 rounded-full grid place-items-center font-extrabold text-blue-950 ${colorOf(badge.child)}`}
-                  >
-                    {badge.child[0]}
-                  </span>
-                  <div>
-                    <div className="font-extrabold">
-                      {badge.child}: {badge.title}
-                    </div>
-                    <div className="text-sm text-gray-600">{badge.detail}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <BadgeList badges={badges(run, library, children)} />
             <div className="flex gap-3">
               <button
                 className="px-5 py-2 rounded-xl bg-amber-400 text-amber-950 font-extrabold"
@@ -490,14 +494,25 @@ const TidyApp: React.FC = () => {
         <JobPicker
           library={library}
           selectedIds={run.taskIds}
+          reward={reward}
           onSelect={(taskIds) => apply({ type: "JobsChosen", taskIds })}
-          onAdd={addTask}
+          onSave={saveTask}
+          onDelete={deleteTask}
+          onReward={chooseReward}
+          celebration={celebration}
+          onCelebration={chooseCelebration}
           onStartFresh={startFresh}
           onClose={() => setShowPicker(false)}
         />
       )}
 
-      {celebrating && <CelebrationOverlay message="🎉 All tidy! 🎉" />}
+      {celebrating && (
+        <CelebrationOverlay
+          message="🎉 All tidy! 🎉"
+          effect={celebration === "random" ? undefined : celebration}
+          onDone={() => setCelebrating(false)}
+        />
+      )}
     </div>
   );
 };

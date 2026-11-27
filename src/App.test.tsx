@@ -58,6 +58,7 @@ describe("completing a lane", () => {
 
   it("queues celebrations when two kids finish together", () => {
     jest.useFakeTimers();
+    jest.spyOn(Math, "random").mockReturnValue(0);
     render(<App />);
 
     config[1].tasks.forEach((task) => {
@@ -81,6 +82,7 @@ describe("completing a lane", () => {
     });
     expect(screen.queryByText(/Well done/)).not.toBeInTheDocument();
     jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 });
 
@@ -118,5 +120,33 @@ describe("long-press to uncheck", () => {
 
     expect(dylanWashFace).toHaveClass("font-bold");
     jest.useRealTimers();
+  });
+});
+
+describe("everyone ready", () => {
+  it("shows a badge for each child once the last celebration has played", () => {
+    jest.useFakeTimers();
+    jest.spyOn(Math, "random").mockReturnValue(0);
+    render(<App />);
+
+    config.forEach((child, i) => {
+      child.tasks.forEach((task) => {
+        fireEvent.click(screen.getAllByText(task.name)[i]);
+      });
+    });
+    expect(screen.queryByText(/Everyone's ready/)).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(3 * 4100);
+    });
+    expect(screen.getByText(/Everyone's ready/)).toBeInTheDocument();
+    expect(screen.getByText(/Jacob: 🐦 Early bird/)).toBeInTheDocument();
+    expect(screen.getByText(/Calum: ⏱️ Beat the clock/)).toBeInTheDocument();
+    expect(screen.getByText(/Dylan: 🌟 Ready to go/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Close"));
+    expect(screen.queryByText(/Everyone's ready/)).not.toBeInTheDocument();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 });

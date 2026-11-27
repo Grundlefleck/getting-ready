@@ -1,3 +1,5 @@
+import { Badge } from "./BadgeList";
+
 export type TidyKind = "team" | "count" | "each";
 
 export interface TidyTask {
@@ -13,9 +15,13 @@ export interface TidyPreset {
   taskIds: string[];
 }
 
+export type TidyReward = "jar" | "monster";
+export const tidyRewards: TidyReward[] = ["jar", "monster"];
+
 export interface TidyRun {
   date: string;
   taskIds: string[];
+  reward?: TidyReward;
   startedAt?: number;
   finishedAt?: number;
   tallies: Record<string, Record<string, number>>;
@@ -37,9 +43,14 @@ const MARBLES_PER_TASK = 6;
 const OPEN_COUNT_PROGRESS_PER_ITEM = 0.1;
 const OPEN_COUNT_PROGRESS_CAP = 0.5;
 
-export const newRun = (date: string, taskIds: string[]): TidyRun => ({
+export const newRun = (
+  date: string,
+  taskIds: string[],
+  reward: TidyReward = "jar",
+): TidyRun => ({
   date,
   taskIds,
+  reward,
   tallies: {},
   closed: {},
 });
@@ -254,10 +265,11 @@ export const runForDay = (
   stored: TidyRun | undefined,
   date: string,
   defaultTaskIds: string[],
+  reward: TidyReward,
 ): TidyRun =>
   stored?.date === date
     ? stored
-    : newRun(date, stored?.taskIds ?? defaultTaskIds);
+    : newRun(date, stored?.taskIds ?? defaultTaskIds, reward);
 
 export interface TidyHistoryEntry {
   selection: string;
@@ -280,20 +292,14 @@ export const lastTimeFor = (
   return previous?.seconds;
 };
 
-interface TidyBadge {
-  child: string;
-  title: string;
-  detail: string;
-}
-
 export const badges = (
   run: TidyRun,
   library: TidyTask[],
   children: string[],
-): TidyBadge[] => {
+): Badge[] => {
   const tasks = activeTasks(run, library);
   const childCredits = credits(run, library, children);
-  const result: TidyBadge[] = [];
+  const result: Badge[] = [];
   const awarded = new Set<string>();
 
   const mostJobs = [...children].sort(

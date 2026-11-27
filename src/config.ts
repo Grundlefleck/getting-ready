@@ -53,3 +53,6 @@ export const config: ChildTaskConfig[] = [
     activities: { monday: ["pe"], friday: ["pe"], wednesday: ["outdoor"] },
   },
 ];
+
+export const colorOf = (name: string) =>
+  config.find((child) => child.name === name)?.colorClass ?? "bg-gray-400";

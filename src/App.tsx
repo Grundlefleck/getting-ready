@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
 import {
   activitiesFor,
   ChildTaskConfig,
@@ -12,13 +13,19 @@ import {
   taskWindows,
 } from "./model";
 import { config } from "./config";
+import BadgeList from "./BadgeList";
+import { morningBadges, readyAt, TickTimes } from "./morningBadges";
 import ActivityTags from "./ActivityTags";
 import LunchPanel from "./LunchPanel";
 import WeekMenuPopup from "./WeekMenuPopup";
 import { dateKey } from "./lunches";
-import { loadTaskCompletionStatus, saveTaskCompletionStatus } from "./storage";
+import {
+  loadTaskCompletionStatus,
+  loadTickTimes,
+  saveTaskCompletionStatus,
+} from "./storage";
 import { overrideCurrentTime, useCurrentTime } from "./clock";
-import CelebrationOverlay, { CELEBRATION_MILLIS } from "./Celebration";
+import CelebrationOverlay from "./Celebration";
 import { useLongPress } from "./longPress";
 
 const StatusIcon = ({
@@ -81,7 +88,11 @@ const App: React.FC = () => {
   const [completedTasks, setCompletedTasks] = useState<TaskCompletionStatus>(
     model.getState().taskCompletionStatus,
   );
+  const [tickTimes, setTickTimes] = useState<TickTimes>(() =>
+    loadTickTimes(dateKey(overrideCurrentTime())),
+  );
   const [showWeekMenu, setShowWeekMenu] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
   const [celebrationQueue, setCelebrationQueue] = useState<
     { id: number; name: string }[]
   >([]);
@@ -99,6 +110,13 @@ const App: React.FC = () => {
     });
     const previous = previousAllDone.current;
     previousAllDone.current = current;
+    const everyone = (status: Record<string, boolean>) =>
+      config.every((child) => status[child.name]);
+    setShowSummary((showing) =>
+      everyone(current)
+        ? showing || (!!previous && !everyone(previous))
+        : false,
+    );
     if (!previous) {
       return;
     }
@@ -115,23 +133,25 @@ const App: React.FC = () => {
 
   const currentCelebration = celebrationQueue[0];
 
-  useEffect(() => {
-    if (!currentCelebration) {
-      return;
-    }
-    const timeout = setTimeout(
-      () => setCelebrationQueue((queue) => queue.slice(1)),
-      CELEBRATION_MILLIS,
-    );
-    return () => clearTimeout(timeout);
-  }, [currentCelebration]);
-
   const longPress = useLongPress();
 
-  const syncFromModel = () => {
+  const syncFromModel = (
+    child: ChildTaskConfig,
+    task: TaskConfig,
+    tickedAt?: number,
+  ) => {
     const status = model.getState().taskCompletionStatus;
+    const { [task.id]: existing, ...others } = tickTimes[child.name] ?? {};
+    const times = {
+      ...tickTimes,
+      [child.name]:
+        tickedAt === undefined
+          ? others
+          : { ...others, [task.id]: existing ?? tickedAt },
+    };
     setCompletedTasks(status);
-    saveTaskCompletionStatus(status, dateKey(currentTime));
+    setTickTimes(times);
+    saveTaskCompletionStatus(status, dateKey(currentTime), times);
   };
 
   const handleTaskClick = (
@@ -143,13 +163,17 @@ const App: React.FC = () => {
       taskConfig,
       completed: taskCompleted,
     });
-    syncFromModel();
+    syncFromModel(taskConfig, taskCompleted, overrideCurrentTime().getTime());
   };
 
   const handleTaskUncheck = (taskConfig: ChildTaskConfig, task: TaskConfig) => {
     model.applyOperation({ type: "TaskUnchecked", taskConfig, task });
-    syncFromModel();
+    syncFromModel(taskConfig, task);
   };
+
+  const everyoneReadyAt = Math.max(
+    ...config.map((child) => readyAt(child, tickTimes) ?? 0),
+  );
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -289,10 +313,32 @@ const App: React.FC = () => {
         </div>
         <LunchPanel date={currentTime} title="Lunch today" />
       </div>
+      {showSummary && !currentCelebration && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center gap-5 max-w-2xl w-full text-center">
+            <span className="text-5xl font-extrabold text-blue-900">
+              Everyone&apos;s ready! 🎉
+            </span>
+            {everyoneReadyAt > 0 && (
+              <span className="text-xl font-bold text-gray-600">
+                All set at {format(everyoneReadyAt, "HH:mm")}
+              </span>
+            )}
+            <BadgeList badges={morningBadges(config, tickTimes, currentTime)} />
+            <button
+              className="px-5 py-2 rounded-xl bg-amber-400 text-amber-950 font-extrabold"
+              onClick={() => setShowSummary(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
       {currentCelebration && (
         <CelebrationOverlay
           key={currentCelebration.id}
           message={`🎉 Well done ${currentCelebration.name}! 🎉`}
+          onDone={() => setCelebrationQueue((queue) => queue.slice(1))}
         />
       )}
     </div>

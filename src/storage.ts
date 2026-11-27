@@ -3,6 +3,7 @@ import {
   initialiseTaskCompletionStatus,
   TaskCompletionStatus,
 } from "./model";
+import { TickTimes } from "./morningBadges";
 
 const STORAGE_KEY = "getting-ready/task-model-state";
 
@@ -23,14 +24,17 @@ export const writeJson = (key: string, value: unknown): void => {
   }
 };
 
+interface StoredDay {
+  date?: string;
+  taskCompletionStatus?: TaskCompletionStatus;
+  tickTimes?: TickTimes;
+}
+
 export const loadTaskCompletionStatus = (
   config: ChildTaskConfig[],
   dayKey: string,
 ): TaskCompletionStatus | undefined => {
-  const stored = readJson<{
-    date?: string;
-    taskCompletionStatus?: TaskCompletionStatus;
-  }>(STORAGE_KEY);
+  const stored = readJson<StoredDay>(STORAGE_KEY);
   if (stored?.date !== dayKey) {
     return undefined;
   }
@@ -45,7 +49,14 @@ export const loadTaskCompletionStatus = (
   return status;
 };
 
+export const loadTickTimes = (dayKey: string): TickTimes => {
+  const stored = readJson<StoredDay>(STORAGE_KEY);
+  return stored?.date === dayKey && stored.tickTimes ? stored.tickTimes : {};
+};
+
 export const saveTaskCompletionStatus = (
   taskCompletionStatus: TaskCompletionStatus,
   dayKey: string,
-): void => writeJson(STORAGE_KEY, { date: dayKey, taskCompletionStatus });
+  tickTimes: TickTimes = {},
+): void =>
+  writeJson(STORAGE_KEY, { date: dayKey, taskCompletionStatus, tickTimes });

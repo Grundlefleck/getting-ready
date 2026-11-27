@@ -169,11 +169,13 @@ describe("runForDay", () => {
   it("keeps today's run and starts tomorrow fresh with the same jobs", () => {
     const today = play(start(), give("karate", "A"));
 
-    expect(runForDay(today, "2026-11-19", ["x"])).toBe(today);
-    expect(runForDay(today, "2026-11-20", ["x"])).toEqual(
-      newRun("2026-11-20", ["hangers", "pyjamas", "karate"]),
+    expect(runForDay(today, "2026-11-19", ["x"], "monster")).toBe(today);
+    expect(runForDay(today, "2026-11-20", ["x"], "monster")).toEqual(
+      newRun("2026-11-20", ["hangers", "pyjamas", "karate"], "monster"),
     );
-    expect(runForDay(undefined, "2026-11-20", ["x"]).taskIds).toEqual(["x"]);
+    expect(runForDay(undefined, "2026-11-20", ["x"], "jar").taskIds).toEqual([
+      "x",
+    ]);
   });
 });
 

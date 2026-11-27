@@ -25,7 +25,7 @@
     "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "postbuild": "mkdir -p build/tidy && cp build/index.html build/tidy/index.html",
+    "postbuild": "node scripts/tidy-page.mjs",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
